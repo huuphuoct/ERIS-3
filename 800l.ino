@@ -17,7 +17,8 @@
 #define SIM800_RX_PIN 11    //SIM800 RX is connected to Arduino D11
 #define OLED_Address 0x3C
 #define REPORTING_PERIOD_MS     1000
-
+#define OverBeat 120
+#define LowBeat 0
 SoftwareSerial serialSIM800(SIM800_TX_PIN,SIM800_RX_PIN); //Create software serial object to communicate with SIM800
 //Adafruit_SSD1306 oled(1); // config Oled
 PulseOximeter pox;
@@ -27,8 +28,7 @@ const int led =  13;  int answer=0;
 float heart =0;
 int heart_int;  int count; int flag_up=0; 
 int sp02 = 0; 
-int TID1=0,TID2=0,TID3=0,flag1;
-
+int heart_avr=0 , sampling=0 , sum_heart=0;
 int8_t sendATcommand(char* ATcommand, char* expected_answer, unsigned int timeout){
 
   uint8_t x=0,answer=0;
@@ -79,8 +79,8 @@ void setup() {
   serialSIM800.begin(9600); delay(2000);                         //Being serial communication witj Arduino and SIM800
   Serial.println("Setup Complete!\r\n"); 
   config_sms_call(); delay(1000); Serial.println("SMS Complete!\r\n");
- // config_http();delay(500); Serial.println("HTTP Complete!\r\n");
-  up_data(30); delay(20000); up_data(70);
+  config_http();delay(500); Serial.println("HTTP Complete!\r\n");
+//  up_data(30); delay(20000); up_data(70);
 //  send_sms("Hello Duy","0984095710");
 //  delay(5000); Serial.println("Config BMP...\r\n");
 //  set_up_BMP(); delay(2000);  Serial.println("BMP Complete!\r\n");
@@ -101,29 +101,12 @@ void setup() {
 void loop()
 {
   heartbeat();
-  //draw_BMP();
-  //delay(2000);
- TID1=TID1+1;
-  if(TID1>600)
-  {
-    TID1=0;
-    TID2=TID2+1;
-    if(TID2>60)
-    {
-      TID2=0;
-      flag1=1;
-    }   
-  }
- 
-
-  if(flag1==1)
-  {
-    flag1=0;
-  }
-
+  
   if(flag_up==1){
     digitalWrite(led,0);    
-    up_data(heart_int);
+    up_data(heart_int,sp02);
+    if(heart_int > OverBeat) send_sms("Over beat","0984095710");
+    setup_max30100();
     count =0; flag_up=0;
   }
 }
@@ -166,13 +149,13 @@ void serialEvent(){
     }
 }
 
-void up_data(int value)
+void up_data(int value,int oxi)
 {
   char buf_data[100], buf_value[100];
-  char request[] = "api.thingspeak.com/update?api_key=1S9BBY02QEAYG2LT&field1=%d";
-//  char request[] = "phuocdang.esy.es/cambien.php?cb1=%d&cb2=0&cb3=0";
+//  char request[] = "api.thingspeak.com/update?api_key=1S9BBY02QEAYG2LT&field1=%d";
+  char request[] = "phuocdang.esy.es/cambien.php?cb1=%d&cb2=%d&cb3=0";
 //  sendATcommand("AT+HTTPPARA=\"CID\",1\r\n","OK",2000);
-  sprintf(buf_value,request,value);
+  sprintf(buf_value,request,value,oxi);
   sprintf(buf_data,"AT+HTTPPARA=\"URL\",\"%s\"\r\n",buf_value);
   answer = sendATcommand(buf_data,"OK",10000);
   if(answer ==1)
@@ -267,8 +250,17 @@ void heartbeat(void)
     // For both, a value of 0 means "invalid"
     if (millis() - tsLastReport > REPORTING_PERIOD_MS) {
         Serial.print("Heart rate:");
-        heart = pox.getHeartRate();
-        heart_int = (int) heart;
+        heart = pox.getHeartRate();        
+        sampling +=1;
+         heart_int = (int) heart;
+        sum_heart += heart_int;
+        if(sampling == 10)
+        {
+           heart_avr = sum_heart;
+           heart_avr = heart_avr/10;
+           sampling =0;          
+        }
+       
         Serial.print(heart);
         Serial.print("bpm / SpO2:");
         sp02 = pox.getSpO2();
