@@ -1,20 +1,10 @@
 #include <SoftwareSerial.h>
 #include <Adafruit_SSD1306.h>
-#include <Wire.h>
 #include "MAX30100_PulseOximeter.h"
-#include <TimerOne.h>
- /*PINOUT: 
- *        ___________________________
- *       |  ARDUINO UNO >>>   SIM800L  |         ARDUINO UNO >>>   HEARTBEAT        ARDUINO UNO >>>   OLED I2C
- *        -----------------------------
- *        GND      >>>   GND                        S >>> AO                            SCL> A5
- *        RX  10   >>>   TX                                                             SDA >>>> A4
- *        TX  11   >>>   RX                                                             VCC >>>> 3.3v
- *       RESET 2   >>>   RST 
- */     
+  
 
-#define SIM800_TX_PIN 10    //SIM800 TX is connected to Arduino D10
-#define SIM800_RX_PIN 11    //SIM800 RX is connected to Arduino D11
+#define SIM800_TX_PIN 10   
+#define SIM800_RX_PIN 11    
 #define OLED_Address 0x3C
 #define REPORTING_PERIOD_MS     1000
 #define OverBeat 120
@@ -41,7 +31,7 @@ int8_t sendATcommand(char* ATcommand, char* expected_answer, unsigned int timeou
 
   while( serialSIM800.available() > 0) serialSIM800.read();    // Clean the input buffer
 
-  serialSIM800.println(ATcommand);    // Send the AT command 
+  serialSIM800.Write(ATcommand);    // Send the AT command 
     x = 0;
     
   // this loop waits for the answer
@@ -152,9 +142,7 @@ void serialEvent(){
 void up_data(int value,int oxi)
 {
   char buf_data[100], buf_value[100];
-//  char request[] = "api.thingspeak.com/update?api_key=1S9BBY02QEAYG2LT&field1=%d";
   char request[] = "phuocdang.esy.es/cambien.php?cb1=%d&cb2=%d&cb3=0";
-//  sendATcommand("AT+HTTPPARA=\"CID\",1\r\n","OK",2000);
   sprintf(buf_value,request,value,oxi);
   sprintf(buf_data,"AT+HTTPPARA=\"URL\",\"%s\"\r\n",buf_value);
   answer = sendATcommand(buf_data,"OK",10000);
@@ -169,10 +157,9 @@ void send_sms(char* sms_text,char* phone_number)
 {
   sendATcommand("AT+CMGF=1\r\n","OK",2000);
   char buffer_sms[50];
-  sprintf(buffer_sms,"AT+CMGS=\"%s\"\r\n", phone_number);
+  sprintf(buffer_sms,"AT+CMGS="%s"\r\n", phone_number);
   serialSIM800.println(buffer_sms); delay(1000); Serial.println("Sending SMS...");
-  serialSIM800.println(sms_text); delay(1000); Serial.println(sms_text);
-  serialSIM800.println((char)26); delay(1000); Serial.println("Send success");  
+  serialSIM800.println(sms_text); delay(1000); Serial.println(sms_text); 
 }
 void config_sms_call(void)
 {
@@ -185,13 +172,10 @@ void config_sms_call(void)
 void config_http(void)
 {
   sendATcommand("AT+SAPBR=3,1,\"Contype\",\"GPRS\"\r\n","OK",2000); delay(1000);
-  sendATcommand("AT+SAPBR=3,1,\"APN\",\"m_wap\"\r\n","OK",2000);  delay(1000);
-  serialSIM800.println("AT+SAPBR=1,1\r\n"); delay(5000); Serial.println("DOneeeee");
-//  sendATcommand("AT+SAPBR=1,1\r\n","OK",2000);  delay(1000);
-//  sendATcommand("AT+HTTPINIT\r\n","OK",2000); delay(1000);
-  serialSIM800.println("AT+HTTPINIT\r\n"); delay(2000); Serial.println("DO");
-//  sendATcommand("AT+HTTPPARA=\"CID\",1\r\n","OK",2000); Serial.println("DOneeeee");
-  serialSIM800.println("AT+HTTPPARA=\"CID\",1\r\n"); delay(3000); Serial.println("DOne");
+  sendATcommand("AT+SAPBR=3,1,\"APN\",\"m_wap\"\r\n","OK",2000);  delay(1000);  
+  sendATcommand("AT+HTTPINIT\r\n","OK",2000); delay(1000); 
+  sendATcommand("AT+HTTPPARA=\"CID\",1\r\n","OK",2000); Serial.println("DOneeeee");
+  
   
 }
 
